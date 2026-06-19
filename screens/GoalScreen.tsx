@@ -85,9 +85,8 @@ export default function GoalScreen({
           <Text style={styles.buttonArrow}> →</Text>
         </TouchableOpacity>
 
-        <Text style={styles.stepperText}>Personal Profile • 6 of 7</Text>
-
         <View style={styles.dotsContainer}>
+          <View style={styles.dot} />
           <View style={styles.dot} />
           <View style={styles.dot} />
           <View style={styles.dot} />
@@ -205,18 +204,12 @@ const styles = StyleSheet.create({
     fontSize: s(18),
     color: '#FAF6F0',
   },
-  stepperText: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: s(14),
-    color: '#000000',
-    marginTop: s(20),
-  },
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: s(8),
-    marginTop: s(12),
+    marginTop: s(24),
   },
   dot: {
     width: s(8),

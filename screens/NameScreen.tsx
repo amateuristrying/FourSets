@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, Dimensions } from 'react-native';
 
 const SCALE = Platform.OS === 'web' ? 1.0 : 0.82;
@@ -6,13 +6,32 @@ const s = (val: number) => val * SCALE;
 
 interface NameScreenProps {
   name: string;
+  sex: 'Male' | 'Female' | 'Other' | null;
+  avatarIndex: number | null;
   onChangeName: (name: string) => void;
+  onChangeSex: (sex: 'Male' | 'Female' | 'Other') => void;
+  onChangeAvatarIndex: (index: number | null) => void;
   onNext: () => void;
   onBack: () => void;
 }
 
-export default function NameScreen({ name, onChangeName, onNext, onBack }: NameScreenProps) {
+export default function NameScreen({ name, sex, avatarIndex, onChangeName, onChangeSex, onChangeAvatarIndex, onNext, onBack }: NameScreenProps) {
   const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    if ((sex === 'Male' || sex === 'Female') && avatarIndex === null) {
+      onChangeAvatarIndex(Math.floor(Math.random() * 3) + 1);
+    }
+  }, [sex, avatarIndex]);
+
+  const handleSelectSex = (selectedSex: 'Male' | 'Female' | 'Other') => {
+    onChangeSex(selectedSex);
+    if (selectedSex === 'Male' || selectedSex === 'Female') {
+      onChangeAvatarIndex(Math.floor(Math.random() * 3) + 1);
+    } else {
+      onChangeAvatarIndex(null);
+    }
+  };
 
   return (
     <KeyboardAvoidingView 
@@ -28,7 +47,7 @@ export default function NameScreen({ name, onChangeName, onNext, onBack }: NameS
             {
               transform: [
                 { translateX: s(0) },
-                { translateY: s(-169) },
+                { translateY: s(-224) },
                 { scale: 1.3 }
               ]
             }
@@ -45,7 +64,7 @@ export default function NameScreen({ name, onChangeName, onNext, onBack }: NameS
       {/* Main Content - Bottom Aligned */}
       <View style={styles.content}>
         <View style={styles.bottomAlignContainer}>
-          <Text style={styles.title}>What should{'\n'}we call you?</Text>
+          <Text style={styles.title}>What should we call you?</Text>
           <Text style={styles.subtitle}>We'll personalize your fitness journey.</Text>
 
           <View style={styles.inputContainer}>
@@ -57,11 +76,110 @@ export default function NameScreen({ name, onChangeName, onNext, onBack }: NameS
               placeholder="Enter your name"
               placeholderTextColor="#8F8C86"
               value={name}
-              onChangeText={onChangeName}
+              onChangeText={(text) => {
+                if (text.length > 0) {
+                  onChangeName(text.charAt(0).toUpperCase() + text.slice(1));
+                } else {
+                  onChangeName('');
+                }
+              }}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               autoCapitalize="words"
             />
+          </View>
+
+          {/* Double-lined circular icon */}
+          <View style={styles.iconContainer}>
+            <View style={styles.outerCircle}>
+              <View style={styles.innerCircle}>
+                {sex === 'Male' && avatarIndex !== null && (
+                  <Image
+                    source={
+                      avatarIndex === 1
+                        ? require('../assets/male_avatar_1.png')
+                        : avatarIndex === 2
+                        ? require('../assets/male_avatar_2.png')
+                        : require('../assets/male_avatar_3.png')
+                    }
+                    style={[
+                      styles.avatarImage,
+                      {
+                        width: avatarIndex === 1 
+                          ? s(74) * 1.40 
+                          : s(74) * 1.79,
+                        height: avatarIndex === 1 
+                          ? s(74) * 1.40 
+                          : s(74) * 1.79,
+                      }
+                    ]}
+                  />
+                )}
+                {sex === 'Female' && avatarIndex !== null && (
+                  <Image
+                    source={
+                      avatarIndex === 1
+                        ? require('../assets/female_avatar_1.png')
+                        : avatarIndex === 2
+                        ? require('../assets/female_avatar_2.png')
+                        : require('../assets/female_avatar_3.png')
+                    }
+                    style={[
+                      styles.avatarImage,
+                      {
+                        width: s(74) * 1.68,
+                        height: s(74) * 1.68,
+                      }
+                    ]}
+                  />
+                )}
+                {sex === 'Other' && (
+                  <Image
+                    source={require('../assets/other_avatar.png')}
+                    style={[
+                      styles.avatarImage,
+                      {
+                        width: s(74) * 1.30 + 3,
+                        height: s(74) * 1.30 + 3,
+                      }
+                    ]}
+                  />
+                )}
+              </View>
+            </View>
+          </View>
+
+          {/* Sex Selection — three inline buttons, no label */}
+          <View style={styles.sexRow}>
+            <TouchableOpacity
+              style={[styles.sexButton, sex === 'Male' && styles.sexButtonActive]}
+              onPress={() => handleSelectSex('Male')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.sexButtonText, sex === 'Male' && styles.sexButtonTextActive]}>
+                Male
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.sexButton, sex === 'Female' && styles.sexButtonActive]}
+              onPress={() => handleSelectSex('Female')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.sexButtonText, sex === 'Female' && styles.sexButtonTextActive]}>
+                Female
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.sexButton, sex === 'Other' && styles.sexButtonActive]}
+              onPress={() => handleSelectSex('Other')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.sexButtonText, sex === 'Other' && styles.sexButtonTextActive]}>
+                Others+
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -69,20 +187,19 @@ export default function NameScreen({ name, onChangeName, onNext, onBack }: NameS
       {/* Footer */}
       <View style={styles.footer}>
         <TouchableOpacity 
-          style={[styles.button, !name.trim() && styles.buttonDisabled]} 
+          style={[styles.button, (!name.trim() || !sex) && styles.buttonDisabled]} 
           onPress={onNext} 
-          disabled={!name.trim()}
+          disabled={!name.trim() || !sex}
           activeOpacity={0.85}
         >
           <Text style={styles.buttonText}>Continue</Text>
           <Text style={styles.buttonArrow}> →</Text>
         </TouchableOpacity>
 
-        <Text style={styles.stepperText}>Personal Profile • 2 of 7</Text>
-
         <View style={styles.dotsContainer}>
           <View style={styles.dot} />
           <View style={[styles.dot, styles.dotActive]} />
+          <View style={styles.dot} />
           <View style={styles.dot} />
           <View style={styles.dot} />
           <View style={styles.dot} />
@@ -147,6 +264,35 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: s(4),
   },
+  sexRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: s(10),
+    marginTop: s(20),
+    paddingHorizontal: s(4),
+  },
+  sexButton: {
+    flex: 1,
+    height: s(50),
+    borderRadius: s(14),
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderColor: '#DCD8D0',
+  },
+  sexButtonActive: {
+    backgroundColor: '#4E5836',
+    borderColor: '#4E5836',
+  },
+  sexButtonText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: s(14),
+    color: '#000000',
+  },
+  sexButtonTextActive: {
+    color: '#FAF6F0',
+  },
   input: {
     width: '100%',
     height: s(56),
@@ -163,6 +309,37 @@ const styles = StyleSheet.create({
     borderColor: '#4E5836',
     borderWidth: 2,
     backgroundColor: '#FFFFFF',
+  },
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: s(20),
+  },
+  outerCircle: {
+    width: s(86),
+    height: s(86),
+    borderRadius: s(43),
+    borderWidth: 1.5,
+    borderColor: '#DCD8D0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  innerCircle: {
+    width: s(74),
+    height: s(74),
+    borderRadius: s(37),
+    borderWidth: 1.5,
+    borderColor: '#DCD8D0',
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
+    alignSelf: 'center',
   },
   footer: {
     paddingBottom: s(24),
@@ -190,18 +367,12 @@ const styles = StyleSheet.create({
     fontSize: s(18),
     color: '#FAF6F0',
   },
-  stepperText: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: s(14),
-    color: '#000000',
-    marginTop: s(20),
-  },
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: s(8),
-    marginTop: s(12),
+    marginTop: s(24),
   },
   dot: {
     width: s(8),

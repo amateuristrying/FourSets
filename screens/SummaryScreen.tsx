@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Platform, Image } from 'react-native';
 import { OnboardingData } from '../types';
 
 const SCALE = Platform.OS === 'web' ? 1.0 : 0.82;
@@ -7,11 +7,20 @@ const s = (val: number) => val * SCALE;
 
 interface SummaryScreenProps {
   data: OnboardingData;
-  onReset: () => void;
+  onSignUp: () => void;
   onBack: () => void;
 }
 
-export default function SummaryScreen({ data, onReset, onBack }: SummaryScreenProps) {
+export default function SummaryScreen({ data, onSignUp, onBack }: SummaryScreenProps) {
+  const calculateAge = () => {
+    const today = new Date();
+    let age = today.getFullYear() - data.birthYear;
+    const monthDiff = today.getMonth() + 1 - data.birthMonth;
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < data.birthDay)) {
+      age--;
+    }
+    return Math.max(0, age);
+  };
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -29,10 +38,61 @@ export default function SummaryScreen({ data, onReset, onBack }: SummaryScreenPr
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.avatarSection}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {data.name.charAt(0).toUpperCase()}
-              </Text>
+            <View style={styles.outerCircle}>
+              <View style={styles.innerCircle}>
+                {data.sex === 'Male' && data.avatarIndex !== null && (
+                  <Image
+                    source={
+                      data.avatarIndex === 1
+                        ? require('../assets/male_avatar_1.png')
+                        : data.avatarIndex === 2
+                        ? require('../assets/male_avatar_2.png')
+                        : require('../assets/male_avatar_3.png')
+                    }
+                    style={[
+                      styles.avatarImage,
+                      {
+                        width: data.avatarIndex === 1 
+                          ? s(74) * 1.40 
+                          : s(74) * 1.79,
+                        height: data.avatarIndex === 1 
+                          ? s(74) * 1.40 
+                          : s(74) * 1.79,
+                      }
+                    ]}
+                  />
+                )}
+                {data.sex === 'Female' && data.avatarIndex !== null && (
+                  <Image
+                    source={
+                      data.avatarIndex === 1
+                        ? require('../assets/female_avatar_1.png')
+                        : data.avatarIndex === 2
+                        ? require('../assets/female_avatar_2.png')
+                        : require('../assets/female_avatar_3.png')
+                    }
+                    style={[
+                      styles.avatarImage,
+                      {
+                        width: s(74) * 1.68,
+                        height: s(74) * 1.68,
+                      }
+                    ]}
+                  />
+                )}
+                {data.sex === 'Other' && (
+                  <Image
+                    source={require('../assets/other_avatar.png')}
+                    style={[
+                      styles.avatarImage,
+                      {
+                        width: s(74) * 1.30 + 3,
+                        height: s(74) * 1.30 + 3,
+                      }
+                    ]}
+                  />
+                )}
+              </View>
             </View>
             <Text style={styles.profileName}>{data.name}</Text>
             <Text style={styles.profileGoalBadge}>{data.goal}</Text>
@@ -44,7 +104,7 @@ export default function SummaryScreen({ data, onReset, onBack }: SummaryScreenPr
           <View style={styles.detailsGrid}>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Age</Text>
-              <Text style={styles.detailValue}>{data.age} years</Text>
+              <Text style={styles.detailValue}>{calculateAge()} years</Text>
             </View>
 
             <View style={styles.detailItem}>
@@ -99,8 +159,9 @@ export default function SummaryScreen({ data, onReset, onBack }: SummaryScreenPr
 
       {/* Footer */}
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.button} onPress={onReset} activeOpacity={0.8}>
-          <Text style={styles.buttonText}>Start Over</Text>
+        <TouchableOpacity style={styles.button} onPress={onSignUp} activeOpacity={0.85}>
+          <Text style={styles.buttonText}>Sign up</Text>
+          <Text style={styles.buttonArrow}> →</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -172,19 +233,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: s(20),
   },
-  avatar: {
-    width: s(70),
-    height: s(70),
-    borderRadius: s(35),
-    backgroundColor: '#4E5836',
+  outerCircle: {
+    width: s(86),
+    height: s(86),
+    borderRadius: s(43),
+    borderWidth: 1.5,
+    borderColor: '#DCD8D0',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: s(12),
   },
-  avatarText: {
-    fontFamily: 'PlayfairDisplay_700Bold',
-    fontSize: s(32),
-    color: '#FAF6F0',
+  innerCircle: {
+    width: s(74),
+    height: s(74),
+    borderRadius: s(37),
+    borderWidth: 1.5,
+    borderColor: '#DCD8D0',
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
+    alignSelf: 'center',
   },
   profileName: {
     fontFamily: 'PlayfairDisplay_700Bold',
@@ -241,6 +315,7 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: '#4E5836',
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
@@ -249,6 +324,11 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontFamily: 'PlayfairDisplay_700Bold',
+    fontSize: s(18),
+    color: '#FAF6F0',
+  },
+  buttonArrow: {
+    fontFamily: 'Inter_600SemiBold',
     fontSize: s(18),
     color: '#FAF6F0',
   },

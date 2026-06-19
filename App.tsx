@@ -8,10 +8,12 @@ import WelcomeScreen from './screens/WelcomeScreen';
 import NameScreen from './screens/NameScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import BodyScreen from './screens/BodyScreen';
+import BmiScreen from './screens/BmiScreen';
 import GoalScreen from './screens/GoalScreen';
 import SummaryScreen from './screens/SummaryScreen';
 import TrainingScreen from './screens/TrainingScreen';
 import PhysiqueScreen from './screens/PhysiqueScreen';
+import SignupScreen from './screens/SignupScreen';
 import { ScreenType, OnboardingData, INITIAL_ONBOARDING_DATA } from './types';
 
 export default function App() {
@@ -75,16 +77,28 @@ export default function App() {
     }, 2000);
   };
 
+  const handleSignUpPress = () => {
+    setShowSplash(true);
+    setTimeout(() => {
+      setCurrentScreen('signup');
+      setShowSplash(false);
+    }, 2000);
+  };
+
   // Render current screen based on navigation state
   const renderScreen = () => {
     switch (currentScreen) {
       case 'welcome':
-        return <WelcomeScreen onNext={() => setCurrentScreen('name')} />;
+        return <WelcomeScreen onNext={() => setCurrentScreen('name')} onSignIn={() => setCurrentScreen('summary')} />;
       case 'name':
         return (
           <NameScreen
             name={data.name}
+            sex={data.sex}
+            avatarIndex={data.avatarIndex}
             onChangeName={(name) => updateData('name', name)}
+            onChangeSex={(sex) => updateData('sex', sex)}
+            onChangeAvatarIndex={(index) => updateData('avatarIndex', index)}
             onNext={() => setCurrentScreen('profile')}
             onBack={() => setCurrentScreen('welcome')}
           />
@@ -92,10 +106,12 @@ export default function App() {
       case 'profile':
         return (
           <ProfileScreen
-            age={data.age}
-            sex={data.sex}
-            onChangeAge={(age) => updateData('age', age)}
-            onChangeSex={(sex) => updateData('sex', sex)}
+            birthDay={data.birthDay}
+            birthMonth={data.birthMonth}
+            birthYear={data.birthYear}
+            onChangeBirthDay={(d) => updateData('birthDay', d)}
+            onChangeBirthMonth={(m) => updateData('birthMonth', m)}
+            onChangeBirthYear={(y) => updateData('birthYear', y)}
             onNext={() => setCurrentScreen('body')}
             onBack={() => setCurrentScreen('name')}
           />
@@ -109,8 +125,17 @@ export default function App() {
             onChangeHeight={(h) => updateData('height', h)}
             onChangeWeight={(w) => updateData('weight', w)}
             onChangeDiet={(d) => updateData('diet', d)}
-            onNext={() => setCurrentScreen('physique')}
+            onNext={() => setCurrentScreen('bmi')}
             onBack={() => setCurrentScreen('profile')}
+          />
+        );
+      case 'bmi':
+        return (
+          <BmiScreen
+            height={data.height}
+            weight={data.weight}
+            onNext={() => setCurrentScreen('physique')}
+            onBack={() => setCurrentScreen('body')}
           />
         );
       case 'physique':
@@ -119,7 +144,7 @@ export default function App() {
             physique={data.physique}
             onChangePhysique={(physique) => updateData('physique', physique)}
             onNext={() => setCurrentScreen('goal')}
-            onBack={() => setCurrentScreen('body')}
+            onBack={() => setCurrentScreen('bmi')}
           />
         );
       case 'goal':
@@ -147,9 +172,11 @@ export default function App() {
           />
         );
       case 'summary':
-        return <SummaryScreen data={data} onReset={handleReset} onBack={() => setCurrentScreen('training')} />;
+        return <SummaryScreen data={data} onSignUp={handleSignUpPress} onBack={() => setCurrentScreen('training')} />;
+      case 'signup':
+        return <SignupScreen data={data} onBack={() => setCurrentScreen('summary')} />;
       default:
-        return <WelcomeScreen onNext={() => setCurrentScreen('name')} />;
+        return <WelcomeScreen onNext={() => setCurrentScreen('name')} onSignIn={() => setCurrentScreen('summary')} />;
     }
   };
 

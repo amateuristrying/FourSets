@@ -1,21 +1,21 @@
 import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Image, Dimensions, Platform } from 'react-native';
-
-const { width: winWidth, height: winHeight, scale: winScale } = Dimensions.get('window');
+import { StyleSheet, View, Text, TouchableOpacity, Image, Platform } from 'react-native';
 
 const SCALE = Platform.OS === 'web' ? 1.0 : 0.82;
 const s = (val: number) => val * SCALE;
 
+// ─── Welcome Screen ─────────────────────────────────────────────────
 interface WelcomeScreenProps {
   onNext: () => void;
   onBack?: () => void;
+  onSignIn?: () => void;
 }
 
-export default function WelcomeScreen({ onNext, onBack }: WelcomeScreenProps) {
+export default function WelcomeScreen({ onNext, onBack, onSignIn }: WelcomeScreenProps) {
   return (
     <View style={styles.container}>
 
-      {/* Centered Image (Floating in background) */}
+      {/* Centered Image (Floating in background) — sitting man */}
       <View style={styles.imageViewport} pointerEvents="none">
         <Image 
           source={require('../assets/sitting_man.png')}
@@ -32,6 +32,23 @@ export default function WelcomeScreen({ onNext, onBack }: WelcomeScreenProps) {
         />
       </View>
 
+      {/* Butterfly image — positioned at user-selected values: X: 139.0, Y: -372.0, Scale: 0.4 */}
+      <View style={styles.imageViewport} pointerEvents="none">
+        <Image
+          source={require('../assets/butterfly.png')}
+          style={[
+            styles.butterflyImage,
+            {
+              transform: [
+                { translateX: s(139.0) },
+                { translateY: s(-372.0) },
+                { scale: 0.4 },
+              ],
+            },
+          ]}
+        />
+      </View>
+
       {/* Top Header Logo & Back Button */}
       <View style={[styles.header, !onBack && { justifyContent: 'flex-start' }]}>
         {onBack && (
@@ -41,6 +58,7 @@ export default function WelcomeScreen({ onNext, onBack }: WelcomeScreenProps) {
         )}
         <Text style={styles.headerLogo}>FourSets</Text>
       </View>
+
 
       {/* Main Content Area - Bottom Aligned */}
       <View style={styles.content}>
@@ -52,16 +70,21 @@ export default function WelcomeScreen({ onNext, onBack }: WelcomeScreenProps) {
       {/* Footer Navigation */}
       <View style={styles.footer}>
         <Text style={{ fontSize: s(10), color: '#8F8C86', marginBottom: s(8), fontFamily: 'Inter_400Regular' }}>
-          Screen: {winWidth.toFixed(0)} x {winHeight.toFixed(0)} | Scale: {winScale.toFixed(3)}
+          Developed by 99VCA, India.
         </Text>
         <TouchableOpacity style={styles.button} onPress={onNext} activeOpacity={0.85}>
-          <Text style={styles.buttonText}>Continue</Text>
+          <Text style={styles.buttonText}>Get started</Text>
           <Text style={styles.buttonArrow}> →</Text>
         </TouchableOpacity>
 
-        {/* Dots indicator - 7 dots */}
+        <TouchableOpacity style={styles.secondaryButton} onPress={onSignIn} activeOpacity={0.7}>
+          <Text style={styles.secondaryButtonText}>Already have an account? Sign in</Text>
+        </TouchableOpacity>
+
+        {/* Dots indicator - 8 dots */}
         <View style={styles.dotsContainer}>
           <View style={[styles.dot, styles.dotActive]} />
+          <View style={styles.dot} />
           <View style={styles.dot} />
           <View style={styles.dot} />
           <View style={styles.dot} />
@@ -163,6 +186,22 @@ const styles = StyleSheet.create({
     fontSize: s(18),
     color: '#FAF6F0',
   },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: '#DCD8D0',
+    borderRadius: s(14),
+    height: s(44),
+    width: '90%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: s(12),
+    backgroundColor: 'transparent',
+  },
+  secondaryButtonText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: s(13),
+    color: '#4A4A4A',
+  },
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -191,6 +230,11 @@ const styles = StyleSheet.create({
   centeredImage: {
     width: s(260),
     height: s(380),
+    resizeMode: 'contain',
+  },
+  butterflyImage: {
+    width: s(200),
+    height: s(200),
     resizeMode: 'contain',
   },
 });

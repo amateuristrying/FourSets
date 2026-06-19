@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Image, Dimensions, Platform } from 'react-native';
+import React, { useRef } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, Image, Dimensions, Platform, PanResponder } from 'react-native';
 
 const SCALE = Platform.OS === 'web' ? 1.0 : 0.82;
 const s = (val: number) => val * SCALE;
@@ -72,6 +72,56 @@ export default function BodyScreen({
     }
   };
 
+  // Refs to avoid stale closures in PanResponder
+  const heightRef = useRef(height);
+  heightRef.current = height;
+  const onChangeHeightRef = useRef(onChangeHeight);
+  onChangeHeightRef.current = onChangeHeight;
+
+  const weightRef = useRef(weight);
+  weightRef.current = weight;
+  const onChangeWeightRef = useRef(onChangeWeight);
+  onChangeWeightRef.current = onChangeWeight;
+
+  const startHeight = useRef(72);
+  const heightPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 5,
+      onPanResponderGrant: () => {
+        startHeight.current = parseHeightToInches(heightRef.current);
+      },
+      onPanResponderMove: (_, gs) => {
+        // Swipe UP -> increase, Swipe DOWN -> decrease
+        const ticks = Math.round(-gs.dy / 12);
+        const newVal = Math.min(Math.max(startHeight.current + ticks, 36), 96);
+        const formatted = formatInchesToHeightString(newVal);
+        if (formatted !== heightRef.current) {
+          onChangeHeightRef.current(formatted);
+        }
+      },
+    })
+  ).current;
+
+  const startWeight = useRef(60);
+  const weightPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 5,
+      onPanResponderGrant: () => {
+        startWeight.current = weightRef.current;
+      },
+      onPanResponderMove: (_, gs) => {
+        // Swipe UP -> increase, Swipe DOWN -> decrease
+        const ticks = Math.round(-gs.dy / 12);
+        const newVal = Math.min(Math.max(startWeight.current + ticks, 20), 300);
+        if (newVal !== weightRef.current) {
+          onChangeWeightRef.current(newVal);
+        }
+      },
+    })
+  ).current;
+
   return (
     <View style={styles.container}>
       {/* Centered Image (Floating in background) */}
@@ -108,7 +158,7 @@ export default function BodyScreen({
           <View style={styles.spinnersRow}>
             {/* Height Spinner */}
             <View style={styles.spinnerContainerWrapper}>
-              <View style={styles.spinnerContainer}>
+              <View style={styles.spinnerContainer} {...heightPanResponder.panHandlers}>
                 <TouchableOpacity 
                   style={styles.spinnerArrowButton} 
                   onPress={handleIncrementHeight}
@@ -117,7 +167,7 @@ export default function BodyScreen({
                   <Text style={styles.spinnerArrow}>▲</Text>
                 </TouchableOpacity>
                 
-                <Text style={styles.spinnerText}>{height}</Text>
+                <Text style={styles.spinnerText} pointerEvents="none">{height}</Text>
                 
                 <TouchableOpacity 
                   style={styles.spinnerArrowButton} 
@@ -132,7 +182,7 @@ export default function BodyScreen({
 
             {/* Weight Spinner */}
             <View style={styles.spinnerContainerWrapper}>
-              <View style={styles.spinnerContainer}>
+              <View style={styles.spinnerContainer} {...weightPanResponder.panHandlers}>
                 <TouchableOpacity 
                   style={styles.spinnerArrowButton} 
                   onPress={handleIncrementWeight}
@@ -141,7 +191,7 @@ export default function BodyScreen({
                   <Text style={styles.spinnerArrow}>▲</Text>
                 </TouchableOpacity>
                 
-                <Text style={styles.spinnerText}>{weight} <Text style={styles.spinnerUnit}>kg</Text></Text>
+                <Text style={styles.spinnerText} pointerEvents="none">{weight} <Text style={styles.spinnerUnit}>kg</Text></Text>
                 
                 <TouchableOpacity 
                   style={styles.spinnerArrowButton} 
@@ -193,13 +243,12 @@ export default function BodyScreen({
           <Text style={styles.buttonArrow}> →</Text>
         </TouchableOpacity>
 
-        <Text style={styles.stepperText}>Personal Profile • 4 of 7</Text>
-
         <View style={styles.dotsContainer}>
           <View style={styles.dot} />
           <View style={styles.dot} />
           <View style={styles.dot} />
           <View style={[styles.dot, styles.dotActive]} />
+          <View style={styles.dot} />
           <View style={styles.dot} />
           <View style={styles.dot} />
           <View style={styles.dot} />
@@ -373,18 +422,12 @@ const styles = StyleSheet.create({
     fontSize: s(18),
     color: '#FAF6F0',
   },
-  stepperText: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: s(14),
-    color: '#000000',
-    marginTop: s(20),
-  },
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: s(8),
-    marginTop: s(12),
+    marginTop: s(24),
   },
   dot: {
     width: s(8),

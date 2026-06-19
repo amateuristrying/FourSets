@@ -1,90 +1,249 @@
-import React, { useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Image, Dimensions, PanResponder, Platform } from 'react-native';
+import React, { useRef, useCallback, useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  Platform,
+  PanResponder,
+  TextInput,
+  KeyboardAvoidingView,
+  GestureResponderEvent,
+  PanResponderGestureState,
+} from 'react-native';
 
 const SCALE = Platform.OS === 'web' ? 1.0 : 0.82;
 const s = (val: number) => val * SCALE;
 
-interface AgeSliderProps {
+// ─── Helpers ────────────────────────────────────────────────────────
+const getDaysInMonth = (month: number, year: number) => {
+  if (month === 2) {
+    const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+    return leap ? 29 : 28;
+  }
+  return [4, 6, 9, 11].includes(month) ? 30 : 31;
+};
+
+const clamp = (val: number, min: number, max: number) =>
+  Math.min(Math.max(Math.round(val), min), max);
+
+const calculateAge = (day: number, month: number, year: number) => {
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  const monthDiff = today.getMonth() + 1 - month;
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < day)) {
+    age--;
+  }
+  return Math.max(0, age);
+};
+
+const MONTH_ABBR = [
+  '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+// ─── Single Scroll Column ──────────────────────────────────────────
+interface ScrollColumnProps {
+  label: string;
   value: number;
   min: number;
   max: number;
   onChange: (val: number) => void;
+  displayFn?: (val: number) => string;
+  width?: number;
 }
 
-const AgeSlider = ({ value, min, max, onChange }: AgeSliderProps) => {
-  const trackWidthRef = useRef(0);
-  const startValueRef = useRef(value);
+const ScrollColumn = ({ label, value, min, max, onChange, displayFn, width }: ScrollColumnProps) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState('');
+  const accumulatedDelta = useRef(0);
+  const startValue = useRef(value);
 
-  // Keep value ref in sync during render so it is fresh inside callbacks
-  const valueRef = useRef(value);
-  valueRef.current = value;
+  const SCROLL_SENSITIVITY = 18; // pixels per tick
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt, gestureState) => {
-        if (trackWidthRef.current <= 0) return;
-        
-        // Record starting value
-        const initialVal = valueRef.current;
-        startValueRef.current = initialVal;
-        
-        // Handle immediate tap change
-        const x = evt.nativeEvent.locationX;
-        const progress = Math.min(Math.max(x / trackWidthRef.current, 0), 1);
-        const tapVal = min + progress * (max - min);
-        startValueRef.current = tapVal;
-        onChange(Math.round(tapVal));
+      onMoveShouldSetPanResponder: (_: GestureResponderEvent, gs: PanResponderGestureState) =>
+        Math.abs(gs.dy) > 5,
+      onPanResponderGrant: () => {
+        accumulatedDelta.current = 0;
+        startValue.current = value;
       },
-      onPanResponderMove: (evt, gestureState) => {
-        if (trackWidthRef.current <= 0) return;
-        
-        // Calculate incremental change relative to initial touch point
-        const deltaProgress = gestureState.dx / trackWidthRef.current;
-        const startProgress = (startValueRef.current - min) / (max - min);
-        const newProgress = Math.min(Math.max(startProgress + deltaProgress, 0), 1);
-        onChange(Math.round(min + newProgress * (max - min)));
+      onPanResponderMove: (_: GestureResponderEvent, gs: PanResponderGestureState) => {
+        // Swipe UP → increase, swipe DOWN → decrease
+        const ticks = Math.round(-gs.dy / SCROLL_SENSITIVITY);
+        const newVal = clamp(startValue.current + ticks, min, max);
+        if (newVal !== value) {
+          onChange(newVal);
+        }
       },
+      onPanResponderRelease: () => {},
     })
   ).current;
 
-  const percentage = ((value - min) / (max - min)) * 100;
+  // Keep startValue in sync for the panResponder
+  startValue.current = value;
+
+  const increment = () => onChange(clamp(value + 1, min, max));
+  const decrement = () => onChange(clamp(value - 1, min, max));
+
+  const handleTap = () => {
+    setEditText(String(value));
+    setIsEditing(true);
+  };
+
+  const handleSubmit = () => {
+    const parsed = parseInt(editText, 10);
+    if (!isNaN(parsed)) {
+      onChange(clamp(parsed, min, max));
+    }
+    setIsEditing(false);
+  };
+
+  const displayValue = displayFn ? displayFn(value) : String(value).padStart(2, '0');
 
   return (
-    <View 
-      style={styles.ageSliderContainer}
-      onLayout={(evt) => {
-        trackWidthRef.current = evt.nativeEvent.layout.width;
-      }}
-      {...panResponder.panHandlers}
-    >
-      <View style={styles.ageSliderTrack} pointerEvents="none" />
-      <View style={[styles.ageSliderTrackActive, { width: `${percentage}%` }]} pointerEvents="none" />
-      <View style={[styles.ageSliderKnob, { left: `${percentage}%` }]} pointerEvents="none" />
+    <View style={[scrollStyles.column, width ? { width: s(width) } : {}]}>
+      {/* Up Arrow */}
+      <TouchableOpacity
+        onPress={increment}
+        style={scrollStyles.arrowBtn}
+        activeOpacity={0.6}
+        hitSlop={{ top: 6, bottom: 6, left: 10, right: 10 }}
+      >
+        <Text style={scrollStyles.arrowText}>▲</Text>
+      </TouchableOpacity>
+
+      {/* Value Box — scrollable + tappable to edit */}
+      <View {...panResponder.panHandlers}>
+        <TouchableOpacity
+          onPress={handleTap}
+          activeOpacity={0.8}
+          style={scrollStyles.valueBox}
+        >
+          {isEditing ? (
+            <TextInput
+              style={scrollStyles.valueInput}
+              value={editText}
+              onChangeText={setEditText}
+              onBlur={handleSubmit}
+              onSubmitEditing={handleSubmit}
+              keyboardType="number-pad"
+              autoFocus
+              selectTextOnFocus
+              maxLength={4}
+            />
+          ) : (
+            <Text style={scrollStyles.valueText}>{displayValue}</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Down Arrow */}
+      <TouchableOpacity
+        onPress={decrement}
+        style={scrollStyles.arrowBtn}
+        activeOpacity={0.6}
+        hitSlop={{ top: 6, bottom: 6, left: 10, right: 10 }}
+      >
+        <Text style={scrollStyles.arrowText}>▼</Text>
+      </TouchableOpacity>
     </View>
   );
 };
 
+const scrollStyles = StyleSheet.create({
+  column: {
+    alignItems: 'center',
+    width: s(62),
+  },
+  arrowBtn: {
+    paddingVertical: s(4),
+    paddingHorizontal: s(10),
+  },
+  arrowText: {
+    fontSize: s(10),
+    color: '#4E5836',
+    fontFamily: 'Inter_600SemiBold',
+  },
+  valueBox: {
+    width: s(56),
+    height: s(48),
+    borderRadius: s(12),
+    borderWidth: 1.5,
+    borderColor: '#DCD8D0',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  valueText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: s(18),
+    color: '#000000',
+  },
+  valueInput: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: s(18),
+    color: '#000000',
+    textAlign: 'center',
+    width: '100%',
+    height: '100%',
+    padding: 0,
+  },
+});
+
+// ─── Profile Screen ─────────────────────────────────────────────────
 interface ProfileScreenProps {
-  age: number;
-  sex: 'Male' | 'Female' | 'Other' | null;
-  onChangeAge: (age: number) => void;
-  onChangeSex: (sex: 'Male' | 'Female' | 'Other') => void;
+  birthDay: number;
+  birthMonth: number;
+  birthYear: number;
+  onChangeBirthDay: (d: number) => void;
+  onChangeBirthMonth: (m: number) => void;
+  onChangeBirthYear: (y: number) => void;
   onNext: () => void;
   onBack: () => void;
 }
 
 export default function ProfileScreen({
-  age,
-  sex,
-  onChangeAge,
-  onChangeSex,
+  birthDay,
+  birthMonth,
+  birthYear,
+  onChangeBirthDay,
+  onChangeBirthMonth,
+  onChangeBirthYear,
   onNext,
   onBack,
 }: ProfileScreenProps) {
+  const maxDay = getDaysInMonth(birthMonth, birthYear);
+  const currentYear = new Date().getFullYear();
+  const age = calculateAge(birthDay, birthMonth, birthYear);
+
+  // Auto-clamp day when month/year changes reduce max days
+  const handleMonthChange = useCallback(
+    (m: number) => {
+      onChangeBirthMonth(m);
+      const newMax = getDaysInMonth(m, birthYear);
+      if (birthDay > newMax) onChangeBirthDay(newMax);
+    },
+    [birthDay, birthYear, onChangeBirthMonth, onChangeBirthDay]
+  );
+
+  const handleYearChange = useCallback(
+    (y: number) => {
+      onChangeBirthYear(y);
+      const newMax = getDaysInMonth(birthMonth, y);
+      if (birthDay > newMax) onChangeBirthDay(newMax);
+    },
+    [birthDay, birthMonth, onChangeBirthYear, onChangeBirthDay]
+  );
+
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
       {/* Centered Image (Floating in background) */}
       <View style={styles.imageViewport} pointerEvents="none">
         <Image 
@@ -114,40 +273,39 @@ export default function ProfileScreen({
           <Text style={styles.title}>Tell us about{'\n'}yourself.</Text>
           <Text style={styles.subtitle}>We'll use this to personalize your fitness plan.</Text>
 
-          {/* Combined Inputs Row (Sex and Age) */}
-          <View style={styles.inputsRow}>
-            {/* Sex Column */}
-            <View style={styles.columnSex}>
-              <Text style={styles.label}>Sex</Text>
-              <View style={styles.sexButtonsContainer}>
-                <TouchableOpacity
-                  style={[styles.sexButton, sex === 'Male' && styles.sexButtonActive]}
-                  onPress={() => onChangeSex('Male')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.sexButtonText, sex === 'Male' && styles.sexButtonTextActive]}>
-                    Male
-                  </Text>
-                </TouchableOpacity>
+          {/* Date of Birth */}
+          <View style={styles.dobSection}>
+            <Text style={styles.label}>
+              Date of Birth{' '}
+              <Text style={styles.ageChip}>({age} yrs)</Text>
+            </Text>
 
-                <TouchableOpacity
-                  style={[styles.sexButton, sex === 'Female' && styles.sexButtonActive]}
-                  onPress={() => onChangeSex('Female')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.sexButtonText, sex === 'Female' && styles.sexButtonTextActive]}>
-                    Female
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Age Column */}
-            <View style={styles.columnAge}>
-              <Text style={styles.label}>Age: <Text style={styles.ageValue}>{age}</Text></Text>
-              <View style={styles.ageSliderWrapper}>
-                <AgeSlider value={age} min={12} max={80} onChange={onChangeAge} />
-              </View>
+            <View style={styles.dobRow}>
+              <ScrollColumn
+                label="DD"
+                value={birthDay}
+                min={1}
+                max={maxDay}
+                onChange={onChangeBirthDay}
+              />
+              <ScrollColumn
+                label="MM"
+                value={birthMonth}
+                min={1}
+                max={12}
+                onChange={handleMonthChange}
+                displayFn={(v) => MONTH_ABBR[v] || String(v).padStart(2, '0')}
+                width={64}
+              />
+              <ScrollColumn
+                label="YY"
+                value={birthYear}
+                min={1930}
+                max={currentYear}
+                onChange={handleYearChange}
+                displayFn={(v) => String(v)}
+                width={70}
+              />
             </View>
           </View>
         </View>
@@ -160,8 +318,6 @@ export default function ProfileScreen({
           <Text style={styles.buttonArrow}> →</Text>
         </TouchableOpacity>
 
-        <Text style={styles.stepperText}>Personal Profile • 3 of 7</Text>
-
         <View style={styles.dotsContainer}>
           <View style={styles.dot} />
           <View style={styles.dot} />
@@ -170,9 +326,10 @@ export default function ProfileScreen({
           <View style={styles.dot} />
           <View style={styles.dot} />
           <View style={styles.dot} />
+          <View style={styles.dot} />
         </View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -204,7 +361,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'flex-end',
-    paddingBottom: s(32),
+    paddingBottom: s(12),
   },
   bottomAlignContainer: {
     width: '100%',
@@ -230,84 +387,23 @@ const styles = StyleSheet.create({
     fontSize: s(16),
     color: '#000000',
   },
-  inputsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  ageChip: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: s(13),
+    color: '#4E5836',
+  },
+  dobSection: {
     width: '100%',
+    alignItems: 'center',
     paddingHorizontal: s(4),
     marginBottom: s(40),
   },
-  columnSex: {
-    width: '46%',
-  },
-  columnAge: {
-    width: '46%',
-  },
-  sexButtonsContainer: {
+  dobRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: s(8),
-    marginTop: s(12),
-  },
-  sexButton: {
-    flex: 1,
-    height: s(48),
-    borderRadius: s(12),
-    borderWidth: 1.5,
     justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    borderColor: '#DCD8D0',
-  },
-  sexButtonActive: {
-    backgroundColor: '#4E5836',
-    borderColor: '#4E5836',
-  },
-  sexButtonText: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: s(14),
-    color: '#000000',
-  },
-  sexButtonTextActive: {
-    color: '#FAF6F0',
-  },
-  ageSliderWrapper: {
-    marginTop: s(18),
-    height: s(30),
-    justifyContent: 'center',
-  },
-  ageSliderContainer: {
-    width: '100%',
-    height: s(20),
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  ageSliderTrack: {
-    width: '100%',
-    height: s(4),
-    borderRadius: s(2),
-    backgroundColor: '#DCD8D0',
-  },
-  ageSliderTrackActive: {
-    height: s(4),
-    borderRadius: s(2),
-    backgroundColor: '#4E5836',
-    position: 'absolute',
-    left: 0,
-  },
-  ageSliderKnob: {
-    width: s(16),
-    height: s(16),
-    borderRadius: s(8),
-    backgroundColor: '#4E5836',
-    position: 'absolute',
-    marginLeft: s(-8),
-  },
-  ageValue: {
-    fontFamily: 'PlayfairDisplay_700Bold',
-    fontSize: s(20),
-    color: '#4E5836',
+    alignItems: 'flex-start',
+    marginTop: s(10),
+    gap: s(10),
   },
   footer: {
     paddingBottom: s(24),
@@ -332,18 +428,12 @@ const styles = StyleSheet.create({
     fontSize: s(18),
     color: '#FAF6F0',
   },
-  stepperText: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: s(14),
-    color: '#000000',
-    marginTop: s(20),
-  },
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: s(8),
-    marginTop: s(12),
+    marginTop: s(24),
   },
   dot: {
     width: s(8),
