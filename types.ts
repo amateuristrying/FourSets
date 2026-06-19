@@ -1,4 +1,4 @@
-export type ScreenType = 'welcome' | 'name' | 'profile' | 'body' | 'bmi' | 'physique' | 'goal' | 'training' | 'summary' | 'signup';
+export type ScreenType = 'welcome' | 'name' | 'profile' | 'body' | 'bmi' | 'physique' | 'goal' | 'training' | 'summary' | 'signup' | 'signin';
 
 export interface OnboardingData {
   name: string;

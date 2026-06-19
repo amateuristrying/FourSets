@@ -14,6 +14,7 @@ import SummaryScreen from './screens/SummaryScreen';
 import TrainingScreen from './screens/TrainingScreen';
 import PhysiqueScreen from './screens/PhysiqueScreen';
 import SignupScreen from './screens/SignupScreen';
+import SigninScreen from './screens/SigninScreen';
 import { ScreenType, OnboardingData, INITIAL_ONBOARDING_DATA } from './types';
 
 export default function App() {
@@ -89,7 +90,7 @@ export default function App() {
   const renderScreen = () => {
     switch (currentScreen) {
       case 'welcome':
-        return <WelcomeScreen onNext={() => setCurrentScreen('name')} onSignIn={() => setCurrentScreen('summary')} />;
+        return <WelcomeScreen onNext={() => setCurrentScreen('name')} onSignIn={() => setCurrentScreen('signin')} />;
       case 'name':
         return (
           <NameScreen
@@ -174,9 +175,11 @@ export default function App() {
       case 'summary':
         return <SummaryScreen data={data} onSignUp={handleSignUpPress} onBack={() => setCurrentScreen('training')} />;
       case 'signup':
-        return <SignupScreen data={data} onBack={() => setCurrentScreen('summary')} />;
+        return <SignupScreen data={data} onBack={() => setCurrentScreen('summary')} onSignIn={() => setCurrentScreen('signin')} />;
+      case 'signin':
+        return <SigninScreen data={data} onBack={() => setCurrentScreen('welcome')} onSignUp={() => setCurrentScreen('signup')} />;
       default:
-        return <WelcomeScreen onNext={() => setCurrentScreen('name')} onSignIn={() => setCurrentScreen('summary')} />;
+        return <WelcomeScreen onNext={() => setCurrentScreen('name')} onSignIn={() => setCurrentScreen('signin')} />;
     }
   };
 

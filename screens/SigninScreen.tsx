@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, Image } from 'react-native';
 import { OnboardingData } from '../types';
 import { Feather } from '@expo/vector-icons';
@@ -6,68 +6,33 @@ import { Feather } from '@expo/vector-icons';
 const SCALE = Platform.OS === 'web' ? 1.0 : 0.82;
 const s = (val: number) => val * SCALE;
 
-interface SignupScreenProps {
+interface SigninScreenProps {
   data: OnboardingData;
   onBack: () => void;
-  onSignIn: () => void;
+  onSignUp: () => void;
 }
 
-export default function SignupScreen({ data, onBack, onSignIn }: SignupScreenProps) {
+export default function SigninScreen({ data, onBack, onSignUp }: SigninScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState<'email' | 'phone'>('email');
-  const [phone, setPhone] = useState('');
-  const [showOtp, setShowOtp] = useState(false);
-  const [otp, setOtp] = useState(['', '', '', '']);
 
-  const otpRefs = [
-    useRef<TextInput>(null),
-    useRef<TextInput>(null),
-    useRef<TextInput>(null),
-    useRef<TextInput>(null),
-  ];
-
-  const handleOtpChange = (value: string, index: number) => {
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-
-    // Auto-focus next field if character is typed
-    if (value && index < 3) {
-      otpRefs[index + 1].current?.focus();
+  const handleSignInPress = () => {
+    if (activeTab === 'email' && !email.trim()) {
+      alert('Please enter your email address.');
+      return;
     }
-  };
-
-  const handleOtpKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
-      otpRefs[index - 1].current?.focus();
+    if (activeTab === 'phone' && !phone.trim()) {
+      alert('Please enter your phone number.');
+      return;
     }
-  };
-
-  const handleButtonPress = () => {
-    if (!showOtp) {
-      if (activeTab === 'email' && !email.trim()) {
-        alert('Please enter your email address.');
-        return;
-      }
-      if (activeTab === 'phone' && !phone.trim()) {
-        alert('Please enter your phone number.');
-        return;
-      }
-      if (!password.trim()) {
-        alert('Please enter your password.');
-        return;
-      }
-      setShowOtp(true);
-    } else {
-      const enteredOtp = otp.join('');
-      if (enteredOtp.length < 4) {
-        alert('Please enter the 4-digit code.');
-        return;
-      }
-      alert(`Account created successfully with code: ${enteredOtp}`);
+    if (!password.trim()) {
+      alert('Please enter your password.');
+      return;
     }
+    alert('Logged in successfully!');
   };
 
   return (
@@ -88,9 +53,9 @@ export default function SignupScreen({ data, onBack, onSignIn }: SignupScreenPro
         keyboardShouldPersistTaps="handled"
       >
         {/* Title & Subtitle */}
-        <Text style={styles.title}>Create Your FourSets Account</Text>
+        <Text style={styles.title}>Sign in to your FourSets account.</Text>
         <Text style={styles.subtitle}>
-          Save your personalized plan{'\n'}and continue your fitness journey.
+          Continue from where you left your journey.
         </Text>
 
         {/* Avatar Section with Sparkles */}
@@ -248,52 +213,27 @@ export default function SignupScreen({ data, onBack, onSignIn }: SignupScreenPro
             </TouchableOpacity>
           </View>
 
-          {/* OTP Section (dynamic layout shift) */}
-          {showOtp && (
-            <View>
-              <Text style={styles.otpLabel}>Enter the 4 digit authentication code sent to you.</Text>
-              <View style={styles.otpRow}>
-                {otp.map((digit, idx) => (
-                  <TextInput
-                    key={idx}
-                    ref={otpRefs[idx]}
-                    style={styles.otpBubble}
-                    maxLength={1}
-                    keyboardType="number-pad"
-                    value={digit}
-                    onChangeText={(val) => handleOtpChange(val, idx)}
-                    onKeyPress={(e) => handleOtpKeyPress(e, idx)}
-                    textAlign="center"
-                    selectTextOnFocus
-                  />
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Create Account / Continue Button */}
+          {/* Sign In Button */}
           <TouchableOpacity 
-            style={styles.createButton} 
+            style={styles.signInButton} 
             activeOpacity={0.85}
-            onPress={handleButtonPress}
+            onPress={handleSignInPress}
           >
-            <Text style={styles.createButtonText}>
-              {showOtp ? 'Create Account' : 'Continue'}
-            </Text>
-            <Text style={styles.createButtonArrow}> →</Text>
+            <Text style={styles.signInButtonText}>Sign In</Text>
+            <Text style={styles.signInButtonArrow}> →</Text>
           </TouchableOpacity>
 
-          {/* Already have an account? Sign In */}
-          <View style={styles.signInRow}>
-            <Text style={styles.signInTextPrefix}>Already have an account? </Text>
-            <TouchableOpacity onPress={onSignIn} activeOpacity={0.7}>
-              <Text style={styles.signInTextLink}>Sign In</Text>
+          {/* Don't have an account? Sign Up */}
+          <View style={styles.signUpRow}>
+            <Text style={styles.signUpTextPrefix}>Don't have an account? </Text>
+            <TouchableOpacity onPress={onSignUp} activeOpacity={0.7}>
+              <Text style={styles.signUpTextLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>
 
           {/* Disclaimer terms */}
           <Text style={styles.disclaimerText}>
-            By signing up, you agree to our <Text style={styles.boldDisclaimer}>Terms of Service</Text>{'\n'}and <Text style={styles.boldDisclaimer}>Privacy Policy</Text>.
+            By signing in, you agree to our <Text style={styles.boldDisclaimer}>Terms of Service</Text>{'\n'}and <Text style={styles.boldDisclaimer}>Privacy Policy</Text>.
           </Text>
         </View>
       </ScrollView>
@@ -318,11 +258,6 @@ const styles = StyleSheet.create({
     height: s(40),
     justifyContent: 'center',
     alignItems: 'flex-start',
-  },
-  backArrow: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: s(22),
-    color: '#000000',
   },
   scrollContent: {
     flexGrow: 1,
@@ -497,9 +432,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAF6F0',
   },
   inputIcon: {
-    fontSize: s(16),
     marginRight: s(10),
-    color: '#7C7E85',
   },
   textInput: {
     flex: 1,
@@ -511,11 +444,7 @@ const styles = StyleSheet.create({
   eyeButton: {
     padding: s(4),
   },
-  eyeIcon: {
-    fontSize: s(16),
-    color: '#7C7E85',
-  },
-  createButton: {
+  signInButton: {
     backgroundColor: '#4E5836',
     flexDirection: 'row',
     justifyContent: 'center',
@@ -526,28 +455,28 @@ const styles = StyleSheet.create({
     marginTop: s(4),
     marginBottom: s(16),
   },
-  createButtonText: {
+  signInButtonText: {
     fontFamily: 'PlayfairDisplay_700Bold',
     fontSize: s(16),
     color: '#FAF6F0',
   },
-  createButtonArrow: {
+  signInButtonArrow: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: s(16),
     color: '#FAF6F0',
   },
-  signInRow: {
+  signUpRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: s(16),
   },
-  signInTextPrefix: {
+  signUpTextPrefix: {
     fontFamily: 'Inter_400Regular',
     fontSize: s(13),
     color: '#7C7E85',
   },
-  signInTextLink: {
+  signUpTextLink: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: s(13),
     color: '#4E5836',
@@ -562,30 +491,5 @@ const styles = StyleSheet.create({
   boldDisclaimer: {
     fontFamily: 'Inter_600SemiBold',
     color: '#4E5836',
-  },
-  otpLabel: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: s(13),
-    color: '#4A4A4A',
-    textAlign: 'center',
-    marginTop: s(16),
-  },
-  otpRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: s(16),
-    marginTop: s(16),
-    marginBottom: s(16),
-  },
-  otpBubble: {
-    width: s(50),
-    height: s(50),
-    borderRadius: s(12),
-    borderWidth: 1.5,
-    borderColor: '#ECEAE4',
-    backgroundColor: '#FFFFFF',
-    fontSize: s(20),
-    fontWeight: '700',
-    color: '#000000',
   },
 });
