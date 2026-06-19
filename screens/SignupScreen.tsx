@@ -155,6 +155,9 @@ export default function SignupScreen({ data, onBack, onSignIn }: SignupScreenPro
                     ]}
                   />
                 )}
+                {(!data.sex || (data.sex !== 'Other' && data.avatarIndex === null)) && (
+                  <Feather name="user" size={s(44)} color="#7C7E85" />
+                )}
               </View>
             </View>
           </View>
